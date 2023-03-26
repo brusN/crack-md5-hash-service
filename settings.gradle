@@ -1,0 +1,4 @@
+rootProject.name = 'ds-lab1'
+include 'crackhash-worker'
+include 'crackhash-manager'
+

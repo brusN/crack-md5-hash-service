@@ -84,8 +84,6 @@ public class WorkerService {
     public ResponseEntity<String> crackHash(CrackHashManagerRequest request) {
         var crackHashOptional = tryCrackHash(request);
         StringWriter writer = new StringWriter();
-        // var headers = new HttpHeaders();
-        // headers.setContentType(MediaType.APPLICATION_XML);
         if (crackHashOptional.isPresent()) {
             try {
                 JAXBContext context = JAXBContext.newInstance(CrackHashManagerResponse.class);
@@ -95,7 +93,6 @@ public class WorkerService {
                 System.err.println(e.getMessage());
             }
         }
-        // var response = new HttpEntity<>(writer.toString());
         return ResponseEntity.ok(writer.toString());
     }
 }

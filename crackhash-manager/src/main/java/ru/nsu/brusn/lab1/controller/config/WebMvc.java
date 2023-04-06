@@ -2,29 +2,22 @@ package ru.nsu.brusn.lab1.controller.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.xml.MarshallingHttpMessageConverter;
-import org.springframework.oxm.xstream.XStreamMarshaller;
 import org.springframework.web.client.RestTemplate;
 import ru.nsu.brusn.lab1.model.task.CrackHashTaskManager;
 
 import java.util.ArrayList;
-import java.util.List;
+
 
 @Configuration
 public class WebMvc {
-
-    private List<HttpMessageConverter<?>> getXmlMessageConverters() {
-        XStreamMarshaller marshaller = new XStreamMarshaller();
-        MarshallingHttpMessageConverter marshallingConverter = new MarshallingHttpMessageConverter(marshaller);
-        List<HttpMessageConverter<?>> converters = new ArrayList<>();
-        converters.add(marshallingConverter);
-        return converters;
-    }
     @Bean
     public RestTemplate getRestTemplate() {
-        var restTemplate = new RestTemplate();
+        var clientHttpRequestFactory = new HttpComponentsClientHttpRequestFactory();
+        clientHttpRequestFactory.setConnectTimeout(2000);
+        var restTemplate = new RestTemplate(clientHttpRequestFactory);
         var messageConverters = new ArrayList<HttpMessageConverter<?>>();
         messageConverters.add(new StringHttpMessageConverter());
         restTemplate.setMessageConverters(messageConverters);

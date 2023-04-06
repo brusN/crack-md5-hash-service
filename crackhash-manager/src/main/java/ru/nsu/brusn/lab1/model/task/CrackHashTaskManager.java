@@ -6,6 +6,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import ru.nsu.brusn.lab1.model.dto.response.CrackHashWorkerResponse;
 import ru.nsu.brusn.lab1.model.worker.WorkerDescriptor;
@@ -69,7 +70,15 @@ public class CrackHashTaskManager implements ITaskManager {
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
         var request = new HttpEntity<>(writer.toString(), headers);
-        return restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, String.class);
+        task.updateStatus(TaskStatus.IN_PROGRESS);
+        ResponseEntity<String> response = null;
+        try {
+            response = restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, String.class);
+        } catch (RestClientException e) {
+            task.updateStatus(TaskStatus.ERROR);
+            System.err.println("Connection is reset");
+        }
+        return response;
     }
 
     @Override
@@ -82,7 +91,7 @@ public class CrackHashTaskManager implements ITaskManager {
                 .thenAccept((result) -> {
                     try {
                         JAXBContext context = JAXBContext.newInstance(CrackHashWorkerResponse.class);
-                        Unmarshaller unmarshaller = context.createUnmarshaller();;
+                        Unmarshaller unmarshaller = context.createUnmarshaller();
                         var element = (CrackHashWorkerResponse) unmarshaller.unmarshal(new StringReader(result.getBody()));
                         task.updateStatus(TaskStatus.READY);
                         task.setData(element.getData());

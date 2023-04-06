@@ -1,4 +1,4 @@
-package ru.nsu.brusn.lab1.model.dto.response;
+package ru.nsu.brusn.lab1.model.dto.response.task;
 
 import jakarta.xml.bind.annotation.*;
 import lombok.AllArgsConstructor;

@@ -1,4 +1,4 @@
-package ru.nsu.brusn.lab1.model.dto.response;
+package ru.nsu.brusn.lab1.model.dto.response.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

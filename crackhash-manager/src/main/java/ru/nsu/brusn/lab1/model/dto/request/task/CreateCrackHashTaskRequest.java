@@ -1,4 +1,4 @@
-package ru.nsu.brusn.lab1.model.dto.request;
+package ru.nsu.brusn.lab1.model.dto.request.task;
 
 import lombok.Getter;
 

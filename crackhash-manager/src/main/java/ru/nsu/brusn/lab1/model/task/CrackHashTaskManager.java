@@ -1,41 +1,46 @@
 package ru.nsu.brusn.lab1.model.task;
 
-import jakarta.xml.bind.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import ru.nsu.brusn.lab1.model.dto.response.CrackHashWorkerResponse;
-import ru.nsu.brusn.lab1.model.worker.WorkerDescriptor;
+import ru.nsu.brusn.lab1.exception.ManagerApiException;
+import ru.nsu.brusn.lab1.exception.mapper.ObjectMapException;
+import ru.nsu.brusn.lab1.mapper.CrackHashManagerRequestToXmlMapper;
+import ru.nsu.brusn.lab1.mapper.XmlToCrackHashWorkerResponseMapper;
+import ru.nsu.brusn.lab1.model.worker.WorkerManager;
 import ru.nsu.ccfit.schema.crack_hash_request.CrackHashManagerRequest;
+import ru.nsu.ccfit.schema.crack_hash_request.ObjectFactory;
 
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.*;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Log4j2
 public class CrackHashTaskManager implements ITaskManager {
     private final Map<UUID, CrackHashTaskDescriptor> tasks;
-    private final List<WorkerDescriptor> workers;
+    private final WorkerManager workerManager;
+    private final ObjectFactory objectFactory;
     private final CrackHashManagerRequest.Alphabet alphabet;
+    private final CrackHashManagerRequestToXmlMapper crackHashManagerRequestToXmlMapper;
+    private final XmlToCrackHashWorkerResponseMapper xmlToCrackHashWorkerResponseMapper;
 
-    @Autowired
-    private RestTemplate restTemplate;
 
-    @Autowired
-    public CrackHashTaskManager() {
+    public CrackHashTaskManager(ObjectFactory objectFactory,
+                                CrackHashManagerRequestToXmlMapper crackHashManagerRequestToXmlMapper,
+                                XmlToCrackHashWorkerResponseMapper xmlToCrackHashWorkerResponseMapper,
+                                WorkerManager workerManager) {
+        this.objectFactory = objectFactory;
+        this.workerManager = workerManager;
+        this.crackHashManagerRequestToXmlMapper = crackHashManagerRequestToXmlMapper;
+        this.xmlToCrackHashWorkerResponseMapper = xmlToCrackHashWorkerResponseMapper;
         tasks = new ConcurrentHashMap<>();
         alphabet = initAlphabet();
-        workers = Collections.synchronizedList(new ArrayList<>());
-        workers.add(new WorkerDescriptor("localhost", "8080"));
     }
 
     private CrackHashManagerRequest.Alphabet initAlphabet() {
-        var alphabet = new CrackHashManagerRequest.Alphabet();
+        var alphabet = objectFactory.createCrackHashManagerRequestAlphabet();
         var alphabetSymbols = alphabet.getSymbols();
         for (char character = 'a'; character <= 'z'; ++character) {
             alphabetSymbols.add(String.valueOf(character));
@@ -49,40 +54,36 @@ public class CrackHashTaskManager implements ITaskManager {
         return alphabet;
     }
 
-    private ResponseEntity<String> sendTaskToWorker(UUID uuid, CrackHashTaskDescriptor task, int partNumber) {
-        StringWriter writer = new StringWriter();
+    private ResponseEntity<String> sendTaskToWorker(UUID uuid, CrackHashTaskDescriptor taskDescriptor, int partNumber) throws ManagerApiException {
+        var request = new CrackHashManagerRequest();
+        request.setRequestId(uuid.toString());
+        request.setHash(taskDescriptor.getHash());
+        request.setMaxLength(taskDescriptor.getMaxLength());
+        request.setPartCount(workerManager.getWorkersCount());
+        request.setPartNumber(partNumber);
+        request.setAlphabet(alphabet);
+
+        String xmlStringRequest;
         try {
-            JAXBContext context = JAXBContext.newInstance(CrackHashManagerRequest.class);
-            Marshaller marshaller = context.createMarshaller();
-
-            var request = new CrackHashManagerRequest();
-            request.setRequestId(uuid.toString());
-            request.setHash(task.getHash());
-            request.setMaxLength(task.getMaxLength());
-            request.setPartCount(workers.size());
-            request.setPartNumber(partNumber);
-            request.setAlphabet(alphabet);
-
-            marshaller.marshal(request, writer);
-        } catch (JAXBException e) {
-            System.err.println(e.getMessage());
+            xmlStringRequest = crackHashManagerRequestToXmlMapper.map(request);
+        } catch (ObjectMapException e) {
+            log.error(e.getMessage());
+            throw new ManagerApiException(e.getMessage());
         }
-        var headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_XML);
-        var request = new HttpEntity<>(writer.toString(), headers);
-        task.updateStatus(TaskStatus.IN_PROGRESS);
-        ResponseEntity<String> response = null;
+
+        taskDescriptor.updateStatus(TaskStatus.IN_PROGRESS);
+        ResponseEntity<String> workerResponse;
         try {
-            response = restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, String.class);
+            workerResponse = workerManager.sendTaskForWorker(partNumber, taskDescriptor, xmlStringRequest);
         } catch (RestClientException e) {
-            task.updateStatus(TaskStatus.ERROR);
-            System.err.println("Connection is reset");
+            taskDescriptor.updateStatus(TaskStatus.ERROR);
+            throw new ManagerApiException("Connection is timeout or error while crack hash");
         }
-        return response;
+        return workerResponse;
     }
 
     @Override
-    public UUID addNewTask(String hash, Integer maxLength) {
+    public UUID addNewTask(String hash, Integer maxLength) throws ManagerApiException {
         var guid = java.util.UUID.randomUUID();
         var task = new CrackHashTaskDescriptor(hash, maxLength);
         tasks.put(guid, task);
@@ -90,12 +91,10 @@ public class CrackHashTaskManager implements ITaskManager {
                 .supplyAsync(() -> sendTaskToWorker(guid, task, 0))
                 .thenAccept((result) -> {
                     try {
-                        JAXBContext context = JAXBContext.newInstance(CrackHashWorkerResponse.class);
-                        Unmarshaller unmarshaller = context.createUnmarshaller();
-                        var element = (CrackHashWorkerResponse) unmarshaller.unmarshal(new StringReader(result.getBody()));
+                        var response = xmlToCrackHashWorkerResponseMapper.map(result.getBody());
                         task.updateStatus(TaskStatus.READY);
-                        task.setData(element.getData());
-                    } catch (JAXBException e) {
+                        task.setData(response.getData());
+                    } catch (ObjectMapException e) {
                         System.err.println(e.getMessage());
                     }
                 });

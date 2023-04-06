@@ -8,15 +8,6 @@ import ru.nsu.brusn.lab1.model.task.CrackHashTaskManager;
 
 @SpringBootApplication
 public class ManagerApplication {
-    @Bean
-    public RestTemplate getRestTemplate() {
-        return new RestTemplate();
-    }
-
-    @Bean
-    public CrackHashTaskManager getTaskManager() {
-        return new CrackHashTaskManager();
-    }
 
     public static void main(String[] args) {
         SpringApplication.run(ManagerApplication.class, args);

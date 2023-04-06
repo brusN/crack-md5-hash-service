@@ -1,6 +1,9 @@
 package ru.nsu.brusn.lab1.model.task;
 
+import java.util.Optional;
+import java.util.UUID;
+
 public interface ITaskManager {
-    String addNewTask(String hash, Integer maxLength);
-    CrackHashTask getTask(String guid);
+    UUID addNewTask(String hash, Integer maxLength);
+    Optional<CrackHashTaskDescriptor> getTask(String guid);
 }

@@ -64,6 +64,7 @@ dependencies {
     jaxb "org.glassfish.jaxb:jaxb-runtime:4.0.1"
     implementation "org.glassfish.jaxb:jaxb-runtime:4.0.1"
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
+    implementation 'com.thoughtworks.xstream:xstream:1.4.20'
 
 
     // https://mvnrepository.com/artifact/commons-codec/commons-codec

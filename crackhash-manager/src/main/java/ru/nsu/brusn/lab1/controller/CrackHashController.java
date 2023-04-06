@@ -1,11 +1,12 @@
 package ru.nsu.brusn.lab1.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.nsu.brusn.lab1.model.dto.request.CreateCrackHashTaskRequest;
+import ru.nsu.brusn.lab1.model.dto.request.CrackHashWorkerRequest;
+import ru.nsu.brusn.lab1.model.dto.response.CreateCrackHashTaskResponse;
+import ru.nsu.brusn.lab1.model.dto.response.GetCrackHashTaskStatusResponse;
+import ru.nsu.brusn.lab1.model.dto.response.MessageResponse;
 import ru.nsu.brusn.lab1.service.CrackHashService;
 
 @RestController
@@ -18,8 +19,17 @@ public class CrackHashController {
     }
 
     @PostMapping("/crack")
-    public ResponseEntity<Object> crackHash(@RequestBody CreateCrackHashTaskRequest request) {
-        var response = crackHashService.crackHash(request);
-        return response;
+    public ResponseEntity<CreateCrackHashTaskResponse> crackHash(@RequestBody CreateCrackHashTaskRequest request) {
+        return crackHashService.crackHash(request);
+    }
+
+    @PostMapping("/update")
+    public ResponseEntity<MessageResponse> updateTaskStatus(@RequestBody CrackHashWorkerRequest request) {
+        return crackHashService.updateTaskStatus(request);
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<GetCrackHashTaskStatusResponse> getStatus(@RequestParam String requestId) {
+        return crackHashService.getStatus(requestId);
     }
 }

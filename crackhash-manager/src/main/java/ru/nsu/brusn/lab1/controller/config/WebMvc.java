@@ -41,6 +41,7 @@ public class WebMvc {
     public CrackHashTaskManager getTaskManager() {
         var restTemplate = getRestTemplate();
         var workerManager = new WorkerManager(restTemplate);
+        workerManager.addWorker("localhost", "8080");
         return new CrackHashTaskManager(new ObjectFactory(), new CrackHashManagerRequestToXmlMapper(), new XmlToCrackHashWorkerResponseMapper(), workerManager);
     }
 }

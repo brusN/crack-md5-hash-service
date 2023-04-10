@@ -25,7 +25,7 @@ public class CrackHashTaskDescriptor {
         this.data = data;
     }
 
-    public void updateStatus(TaskStatus status) {
+    public void setStatus(TaskStatus status) {
         this.status = status;
     }
 

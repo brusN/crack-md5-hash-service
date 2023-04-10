@@ -34,9 +34,13 @@ public class WorkerManager {
         return workers.size();
     }
 
+    public void addWorker(String url, String port) {
+        workers.add(new WorkerDescriptor(url, port));
+    }
+
     public ResponseEntity<String> sendTaskForWorker(int partNumber, CrackHashTaskDescriptor taskDescriptor, String xmlRequest) throws RestClientException {
         var request = new HttpEntity<>(xmlRequest, httpHeaders);
-        taskDescriptor.updateStatus(TaskStatus.IN_PROGRESS);
+        taskDescriptor.setStatus(TaskStatus.IN_PROGRESS);
         return restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, String.class);
     }
 }

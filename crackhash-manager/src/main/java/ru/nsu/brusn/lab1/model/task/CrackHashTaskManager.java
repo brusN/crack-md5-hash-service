@@ -11,10 +11,12 @@ import ru.nsu.brusn.lab1.model.worker.WorkerManager;
 import ru.nsu.ccfit.schema.crack_hash_request.CrackHashManagerRequest;
 import ru.nsu.ccfit.schema.crack_hash_request.ObjectFactory;
 
+import java.rmi.ServerException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Log4j2
@@ -71,12 +73,12 @@ public class CrackHashTaskManager implements ITaskManager {
             throw new ManagerApiException(e.getMessage());
         }
 
-        taskDescriptor.updateStatus(TaskStatus.IN_PROGRESS);
+        taskDescriptor.setStatus(TaskStatus.IN_PROGRESS);
         ResponseEntity<String> workerResponse;
         try {
             workerResponse = workerManager.sendTaskForWorker(partNumber, taskDescriptor, xmlStringRequest);
         } catch (RestClientException e) {
-            taskDescriptor.updateStatus(TaskStatus.ERROR);
+            taskDescriptor.setStatus(TaskStatus.ERROR);
             throw new ManagerApiException("Connection is timeout or error while crack hash");
         }
         return workerResponse;
@@ -87,17 +89,24 @@ public class CrackHashTaskManager implements ITaskManager {
         var guid = java.util.UUID.randomUUID();
         var task = new CrackHashTaskDescriptor(hash, maxLength);
         tasks.put(guid, task);
-        CompletableFuture
-                .supplyAsync(() -> sendTaskToWorker(guid, task, 0))
-                .thenAccept((result) -> {
+        var cf = CompletableFuture
+                .supplyAsync(() -> {
                     try {
-                        var response = xmlToCrackHashWorkerResponseMapper.map(result.getBody());
-                        task.updateStatus(TaskStatus.READY);
-                        task.setData(response.getData());
-                    } catch (ObjectMapException e) {
-                        System.err.println(e.getMessage());
+                        return sendTaskToWorker(guid, task, 0);
+                    } catch (ManagerApiException e) {
+                        throw new CompletionException(e);
                     }
                 });
+
+        try {
+            var result = cf.join();
+            var response = xmlToCrackHashWorkerResponseMapper.map(result.getBody());
+            task.setStatus(TaskStatus.READY);
+            task.setData(response.getData());
+        } catch (CompletionException e) {
+            throw new ManagerApiException(e);
+        }
+
         return guid;
     }
 

@@ -20,10 +20,9 @@ sourceSets {
     }
 }
 
-
 bootJar {
-    archiveBaseName = 'gs-producing-web-service'
-    archiveVersion =  '0.1.0'
+    archiveBaseName = 'crackhash-worker'
+    archiveVersion =  '0.0.1'
 }
 
 tasks.register('genJaxb') {

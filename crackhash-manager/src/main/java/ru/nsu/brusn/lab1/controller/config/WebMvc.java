@@ -4,13 +4,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.xml.MappingJackson2XmlHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
-import ru.nsu.brusn.lab1.mapper.CrackHashManagerRequestToXmlMapper;
-import ru.nsu.brusn.lab1.mapper.XmlToCrackHashWorkerResponseMapper;
+import ru.nsu.brusn.lab1.model.manager.ObjectFactory;
 import ru.nsu.brusn.lab1.model.task.CrackHashTaskManager;
 import ru.nsu.brusn.lab1.model.worker.WorkerManager;
-import ru.nsu.ccfit.schema.crack_hash_request.ObjectFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +25,7 @@ public class WebMvc {
 
     private List<HttpMessageConverter<?>> getConfiguredMessageConverters() {
         var messageConverters = new ArrayList<HttpMessageConverter<?>>();
-        messageConverters.add(new StringHttpMessageConverter());
+        messageConverters.add(new MappingJackson2XmlHttpMessageConverter());
         return messageConverters;
     }
 
@@ -42,6 +40,6 @@ public class WebMvc {
         var restTemplate = getRestTemplate();
         var workerManager = new WorkerManager(restTemplate);
         workerManager.addWorker("localhost", "8080");
-        return new CrackHashTaskManager(new ObjectFactory(), new CrackHashManagerRequestToXmlMapper(), new XmlToCrackHashWorkerResponseMapper(), workerManager);
+        return new CrackHashTaskManager(new ObjectFactory(), workerManager);
     }
 }

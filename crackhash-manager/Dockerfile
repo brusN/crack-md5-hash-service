@@ -1,3 +1,3 @@
-FROM openjdk:18
-COPY build/libs/crackhash-manager-0.0.1.jar crackhash-manager-0.0.1.jar
-ENTRYPOINT ["java", "-jar", "crackhash-manager-0.0.1.jar"]
+FROM openjdk:11
+COPY build/libs/app.jar manager-app.jar
+ENTRYPOINT ["java", "-jar", "manager-app.jar"]

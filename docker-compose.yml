@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  manager:
+    image: "crackhash-manager-image"
+    restart: "always"
+    ports:
+      - ${MANAGER_MODULE_PORT}:${MANAGER_MODULE_PORT}
+    networks:
+      - docker_network
+    depends_on:
+      - ${WORKER_MODULE_NAME}
+  worker:
+    image: "crackhash-worker-image"
+    restart: "always"
+    ports:
+      - ${WORKER_MODULE_PORT}:${WORKER_MODULE_PORT}
+    networks:
+      - docker_network
+networks:
+  docker_network:
+    driver: bridge

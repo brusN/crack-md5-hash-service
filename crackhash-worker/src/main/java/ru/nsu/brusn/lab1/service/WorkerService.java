@@ -1,17 +1,13 @@
 package ru.nsu.brusn.lab1.service;
 
-import jakarta.xml.bind.DatatypeConverter;
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.Marshaller;
 import lombok.extern.log4j.Log4j2;
 import org.paukov.combinatorics3.Generator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import ru.nsu.brusn.lab1.model.dto.response.CrackHashManagerResponse;
-import ru.nsu.ccfit.schema.crack_hash_request.CrackHashManagerRequest;
+import ru.nsu.brusn.lab1.model.worker.CrackHashManagerRequest;
 
-import java.io.StringWriter;
+import javax.xml.bind.DatatypeConverter;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -75,7 +71,7 @@ public class WorkerService {
 
             // Check single-literal word
             if (isHashBelongsWord(curLiteral, hash)) {
-                return curLiteral.describeConstable();
+                return Optional.of(curLiteral);
             }
 
             // Check multi-literals words
@@ -83,7 +79,7 @@ public class WorkerService {
                 for (List<String> permutation : Generator.permutation(alphabet).withRepetitions(permutationLength)) {
                     var word = buildWord(curLiteral, permutation);
                     if (isHashBelongsWord(word, hash)) {
-                        return word.describeConstable();
+                        return Optional.of(word);
                     }
                 }
             }
@@ -91,16 +87,8 @@ public class WorkerService {
         return Optional.empty();
     }
 
-    public ResponseEntity<String> crackHash(CrackHashManagerRequest request) {
+    public ResponseEntity<CrackHashManagerResponse> crackHash(CrackHashManagerRequest request) {
         var crackHashOptional = validateHashForWorkerPart(request);
-        StringWriter writer = new StringWriter();
-        try {
-            JAXBContext context = JAXBContext.newInstance(CrackHashManagerResponse.class);
-            Marshaller m = context.createMarshaller();
-            m.marshal(new CrackHashManagerResponse(request.getRequestId(), crackHashOptional.orElse(null)), writer);
-        } catch (JAXBException e) {
-            log.error(e.getMessage());
-        }
-        return ResponseEntity.ok(writer.toString());
+        return ResponseEntity.ok(new CrackHashManagerResponse(request.getRequestId(), crackHashOptional.orElse(null)));
     }
 }

@@ -4,14 +4,11 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import ru.nsu.brusn.lab1.exception.ManagerApiException;
-import ru.nsu.brusn.lab1.exception.mapper.ObjectMapException;
-import ru.nsu.brusn.lab1.mapper.CrackHashManagerRequestToXmlMapper;
-import ru.nsu.brusn.lab1.mapper.XmlToCrackHashWorkerResponseMapper;
+import ru.nsu.brusn.lab1.model.dto.response.task.CrackHashWorkerResponse;
+import ru.nsu.brusn.lab1.model.manager.CrackHashManagerRequest;
+import ru.nsu.brusn.lab1.model.manager.ObjectFactory;
 import ru.nsu.brusn.lab1.model.worker.WorkerManager;
-import ru.nsu.ccfit.schema.crack_hash_request.CrackHashManagerRequest;
-import ru.nsu.ccfit.schema.crack_hash_request.ObjectFactory;
 
-import java.rmi.ServerException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,18 +22,11 @@ public class CrackHashTaskManager implements ITaskManager {
     private final WorkerManager workerManager;
     private final ObjectFactory objectFactory;
     private final CrackHashManagerRequest.Alphabet alphabet;
-    private final CrackHashManagerRequestToXmlMapper crackHashManagerRequestToXmlMapper;
-    private final XmlToCrackHashWorkerResponseMapper xmlToCrackHashWorkerResponseMapper;
 
 
-    public CrackHashTaskManager(ObjectFactory objectFactory,
-                                CrackHashManagerRequestToXmlMapper crackHashManagerRequestToXmlMapper,
-                                XmlToCrackHashWorkerResponseMapper xmlToCrackHashWorkerResponseMapper,
-                                WorkerManager workerManager) {
+    public CrackHashTaskManager(ObjectFactory objectFactory, WorkerManager workerManager) {
         this.objectFactory = objectFactory;
         this.workerManager = workerManager;
-        this.crackHashManagerRequestToXmlMapper = crackHashManagerRequestToXmlMapper;
-        this.xmlToCrackHashWorkerResponseMapper = xmlToCrackHashWorkerResponseMapper;
         tasks = new ConcurrentHashMap<>();
         alphabet = initAlphabet();
     }
@@ -56,7 +46,7 @@ public class CrackHashTaskManager implements ITaskManager {
         return alphabet;
     }
 
-    private ResponseEntity<String> sendTaskToWorker(UUID uuid, CrackHashTaskDescriptor taskDescriptor, int partNumber) throws ManagerApiException {
+    private ResponseEntity<CrackHashWorkerResponse> sendTaskToWorker(UUID uuid, CrackHashTaskDescriptor taskDescriptor, int partNumber) throws ManagerApiException {
         var request = new CrackHashManagerRequest();
         request.setRequestId(uuid.toString());
         request.setHash(taskDescriptor.getHash());
@@ -65,21 +55,13 @@ public class CrackHashTaskManager implements ITaskManager {
         request.setPartNumber(partNumber);
         request.setAlphabet(alphabet);
 
-        String xmlStringRequest;
-        try {
-            xmlStringRequest = crackHashManagerRequestToXmlMapper.map(request);
-        } catch (ObjectMapException e) {
-            log.error(e.getMessage());
-            throw new ManagerApiException(e.getMessage());
-        }
-
         taskDescriptor.setStatus(TaskStatus.IN_PROGRESS);
-        ResponseEntity<String> workerResponse;
+        ResponseEntity<CrackHashWorkerResponse> workerResponse;
         try {
-            workerResponse = workerManager.sendTaskForWorker(partNumber, taskDescriptor, xmlStringRequest);
+            workerResponse = workerManager.sendTaskForWorker(partNumber, taskDescriptor, request);
         } catch (RestClientException e) {
             taskDescriptor.setStatus(TaskStatus.ERROR);
-            throw new ManagerApiException("Connection is timeout or error while crack hash");
+            throw new ManagerApiException("Connection is timeout or error while crack hash on worker side: " + e.getMessage());
         }
         return workerResponse;
     }
@@ -94,16 +76,17 @@ public class CrackHashTaskManager implements ITaskManager {
                     try {
                         return sendTaskToWorker(guid, task, 0);
                     } catch (ManagerApiException e) {
+                        log.error(e.getMessage());
                         throw new CompletionException(e);
                     }
                 });
 
         try {
             var result = cf.join();
-            var response = xmlToCrackHashWorkerResponseMapper.map(result.getBody());
             task.setStatus(TaskStatus.READY);
-            task.setData(response.getData());
+            task.setData(result.getBody().getData());
         } catch (CompletionException e) {
+            log.error(e.getMessage());
             throw new ManagerApiException(e);
         }
 

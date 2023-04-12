@@ -6,6 +6,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import ru.nsu.brusn.lab1.model.dto.response.task.CrackHashWorkerResponse;
+import ru.nsu.brusn.lab1.model.manager.CrackHashManagerRequest;
 import ru.nsu.brusn.lab1.model.task.CrackHashTaskDescriptor;
 import ru.nsu.brusn.lab1.model.task.TaskStatus;
 
@@ -38,9 +40,9 @@ public class WorkerManager {
         workers.add(new WorkerDescriptor(url, port));
     }
 
-    public ResponseEntity<String> sendTaskForWorker(int partNumber, CrackHashTaskDescriptor taskDescriptor, String xmlRequest) throws RestClientException {
+    public ResponseEntity<CrackHashWorkerResponse> sendTaskForWorker(int partNumber, CrackHashTaskDescriptor taskDescriptor, CrackHashManagerRequest xmlRequest) throws RestClientException {
         var request = new HttpEntity<>(xmlRequest, httpHeaders);
         taskDescriptor.setStatus(TaskStatus.IN_PROGRESS);
-        return restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, String.class);
+        return restTemplate.postForEntity("http://" + workers.get(partNumber).getAddress() + "/internal/api/worker/hash/crack/task", request, CrackHashWorkerResponse.class);
     }
 }

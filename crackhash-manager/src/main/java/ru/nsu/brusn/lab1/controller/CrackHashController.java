@@ -19,12 +19,12 @@ public class CrackHashController {
     }
 
     @PostMapping("/crack")
-    public ResponseWrapper<ResponseEntity<CreateCrackHashTaskResponse>> crackHash(@RequestBody CreateCrackHashTaskRequest request) throws ManagerApiException {
-        return new ResponseWrapper<>(crackHashService.crackHash(request));
+    public ResponseEntity<CreateCrackHashTaskResponse> crackHash(@RequestBody CreateCrackHashTaskRequest request) throws ManagerApiException {
+        return crackHashService.crackHash(request);
     }
 
     @GetMapping("/status")
-    public ResponseWrapper<ResponseEntity<GetCrackHashTaskStatusResponse>> getStatus(@RequestParam String requestId) {
-        return new ResponseWrapper<>(crackHashService.getStatus(requestId));
+    public ResponseEntity<GetCrackHashTaskStatusResponse> getStatus(@RequestParam String requestId) {
+        return crackHashService.getStatus(requestId);
     }
 }
